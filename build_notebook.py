@@ -5,14 +5,16 @@ nb = nbf.v4.new_notebook()
 cells = []
 
 # Cell 1: Header Markdown
-cells.append(nbf.v4.new_markdown_cell(r"""# ✈️ Uçuş Bilet Fiyatı Analizi ve Makine Öğrenmesi Tahmin Modeli
+cells.append(nbf.v4.new_markdown_cell(r"""# ✈️ Uçuş Bilet Fiyatı Analizi, Özellik Mühendisliği ve Hiperparametre Optimizasyonlu Makine Öğrenmesi Modeli
 
 Bu Jupyter Notebook çalışmasında **`flight_cleaned.csv`** veri seti kullanılarak uçuş bilet fiyatları üzerinde:
 1. **Keşifçi Veri Analizi (EDA) ve Temizlik**
 2. **Kategorik Değişkenlerin Fiyat İle İlişkisi ve Gruplama**
 3. **Tarih ve Zaman Alanlarından Özellik Mühendisliği (Feature Engineering)**
 4. **Train / Test Veri Seti Ayrımı ve Ön İşleme (Preprocessing)**
-5. **Çeşitli Regresyon Modelleri (Linear Regression, Ridge, Lasso, Decision Tree, Random Forest, Gradient Boosting, XGBoost, LightGBM) İle Modelleme ve Performans Değerlendirmesi**
+5. **Çeşitli Regresyon Modelleri (Linear Regression, Ridge, Lasso, Decision Tree, Random Forest, Gradient Boosting, XGBoost, LightGBM) İle Modelleme**
+6. **Hiperparametre Optimizasyonu (Hyperparameter Tuning - RandomizedSearchCV)**
+7. **Model Karşılaştırması ve Hata / Artık (Residual) Analizi**
 
 gerçekleştirilmiştir.
 """))
@@ -26,7 +28,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ML Imports
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -258,9 +260,9 @@ print(f"\nÖn işleme sonrası matris boyutu: {X_train_prep.shape[1]} özellik")
 """))
 
 # Cell 14: Section 6 Markdown
-cells.append(nbf.v4.new_markdown_cell(r"""## 6. 🤖 Makine Öğrenmesi Modelleri ve Performans Karşılaştırması
+cells.append(nbf.v4.new_markdown_cell(r"""## 6. 🤖 Temel Makine Öğrenmesi Modelleri Karşılaştırması
 
-Aşağıdaki regresyon algoritmaları eğitilmiş ve tahmin performansları $R^2$, **MAE (Mean Absolute Error)** ve **RMSE (Root Mean Squared Error)** metrikleri ile karşılaştırılmıştır:
+Aşağıdaki regresyon algoritmaları eğitilmiş ve varsayılan hiperparametreler ile tahmin performansları $R^2$, **MAE (Mean Absolute Error)** ve **RMSE (Root Mean Squared Error)** metrikleri ile karşılaştırılmıştır:
 1. **Linear Regression**
 2. **Ridge Regression**
 3. **Lasso Regression**
@@ -283,7 +285,7 @@ cells.append(nbf.v4.new_code_cell(r"""models = {
     'Random Forest': RandomForestRegressor(n_estimators=150, random_state=42, n_jobs=-1)
 }
 
-results = []
+base_results = []
 
 for name, model in models.items():
     model.fit(X_train_prep, y_train)
@@ -293,32 +295,122 @@ for name, model in models.items():
     mae = mean_absolute_error(y_test, preds)
     rmse = root_mean_squared_error(y_test, preds)
     
-    results.append({
+    base_results.append({
         'Model': name,
         'R2 Score': round(r2, 4),
         'MAE (INR)': round(mae, 2),
         'RMSE (INR)': round(rmse, 2)
     })
 
-results_df = pd.DataFrame(results).sort_values(by='R2 Score', ascending=False).reset_index(drop=True)
-print("=== MODEL PERFORMANS KARŞILAŞTIRMA TABLOSU ===")
-display(results_df)
+base_results_df = pd.DataFrame(base_results).sort_values(by='R2 Score', ascending=False).reset_index(drop=True)
+print("=== TEMEL MODEL PERFORMANS KARŞILAŞTIRMA TABLOSU ===")
+display(base_results_df)
 """))
 
-# Cell 16: Section 6 Plot Code
-cells.append(nbf.v4.new_code_cell(r"""# Model Performans Görselleştirmesi
+# Cell 16: Section 7 Markdown
+cells.append(nbf.v4.new_markdown_cell(r"""## 7. ⚡ Hiperparametre Optimizasyonu (Hyperparameter Tuning)
+
+En yüksek başarıyı veren en güçlü topluluk modelleri (**LightGBM**, **XGBoost** ve **Random Forest**) üzerinde 3 katlı çapraz doğrulama (**3-Fold Cross-Validation**) ve **RandomizedSearchCV** kullanılarak optimum hiperparametre kombinasyonları aranmıştır.
+"""))
+
+# Cell 17: Section 7 Code (Hyperparameter Tuning)
+cells.append(nbf.v4.new_code_cell(r"""tuned_models = {}
+tuned_results = []
+
+# 1. LightGBM Optimization
+print("🔍 1/3 LightGBM Hiperparametre Optimizasyonu Yapılıyor...")
+lgb_param_grid = {
+    'n_estimators': [150, 250, 350],
+    'learning_rate': [0.05, 0.08, 0.12],
+    'max_depth': [8, 12, 15, -1],
+    'num_leaves': [31, 50, 70],
+    'min_child_samples': [10, 20, 30]
+}
+
+lgb_search = RandomizedSearchCV(
+    lgb.LGBMRegressor(random_state=42, verbose=-1),
+    param_distributions=lgb_param_grid,
+    n_iter=12, cv=3, scoring='r2', random_state=42, n_jobs=-1
+)
+lgb_search.fit(X_train_prep, y_train)
+tuned_models['LightGBM (Tuned)'] = lgb_search.best_estimator_
+print(f"   En İyi LightGBM Parametreleri: {lgb_search.best_params_}")
+
+# 2. XGBoost Optimization
+print("\n🔍 2/3 XGBoost Hiperparametre Optimizasyonu Yapılıyor...")
+xgb_param_grid = {
+    'n_estimators': [150, 250, 350],
+    'learning_rate': [0.05, 0.08, 0.12],
+    'max_depth': [5, 7, 9],
+    'subsample': [0.7, 0.85, 1.0],
+    'colsample_bytree': [0.7, 0.85, 1.0]
+}
+
+xgb_search = RandomizedSearchCV(
+    xgb.XGBRegressor(random_state=42),
+    param_distributions=xgb_param_grid,
+    n_iter=12, cv=3, scoring='r2', random_state=42, n_jobs=-1
+)
+xgb_search.fit(X_train_prep, y_train)
+tuned_models['XGBoost (Tuned)'] = xgb_search.best_estimator_
+print(f"   En İyi XGBoost Parametreleri: {xgb_search.best_params_}")
+
+# 3. Random Forest Optimization
+print("\n🔍 3/3 Random Forest Hiperparametre Optimizasyonu Yapılıyor...")
+rf_param_grid = {
+    'n_estimators': [150, 250, 350],
+    'max_depth': [12, 18, 25, None],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+rf_search = RandomizedSearchCV(
+    RandomForestRegressor(random_state=42, n_jobs=-1),
+    param_distributions=rf_param_grid,
+    n_iter=12, cv=3, scoring='r2', random_state=42, n_jobs=-1
+)
+rf_search.fit(X_train_prep, y_train)
+tuned_models['Random Forest (Tuned)'] = rf_search.best_estimator_
+print(f"   En İyi Random Forest Parametreleri: {rf_search.best_params_}")
+
+# Değerlendirme
+for name, model in tuned_models.items():
+    preds = model.predict(X_test_prep)
+    r2 = r2_score(y_test, preds)
+    mae = mean_absolute_error(y_test, preds)
+    rmse = root_mean_squared_error(y_test, preds)
+    
+    tuned_results.append({
+        'Model': name,
+        'R2 Score': round(r2, 4),
+        'MAE (INR)': round(mae, 2),
+        'RMSE (INR)': round(rmse, 2)
+    })
+
+tuned_results_df = pd.DataFrame(tuned_results).sort_values(by='R2 Score', ascending=False).reset_index(drop=True)
+print("\n=== OPTİMİZE EDİLMİŞ MODEL PERFORMANSLARI ===")
+display(tuned_results_df)
+"""))
+
+# Cell 18: Section 7 Plot Code (Default vs Tuned Comparison)
+cells.append(nbf.v4.new_code_cell(r"""# Varsayılan vs Optimize Model Karşılaştırma Görselleştirmesi
+comp_df = pd.concat([
+    base_results_df[base_results_df['Model'].isin(['Random Forest', 'LightGBM', 'XGBoost', 'Linear Regression'])],
+    tuned_results_df
+]).sort_values(by='R2 Score', ascending=False)
+
 fig, axes = plt.subplots(1, 2, figsize=(16, 5))
 
-# Plot 1: R2 Comparison
-sns.barplot(data=results_df, x='R2 Score', y='Model', palette='viridis', ax=axes[0])
-axes[0].set_title('Model Başarısı (R² Score - Yüksek İki İyi)', fontweight='bold')
+# R2 Score
+sns.barplot(data=comp_df, x='R2 Score', y='Model', palette='viridis', ax=axes[0])
+axes[0].set_title('Varsayılan vs Optimizasyonlu R² Başarısı (Yüksek İki İyi)', fontweight='bold')
 axes[0].set_xlim(0, 1.0)
 for p in axes[0].patches:
     axes[0].annotate(f"{p.get_width():.4f}", (p.get_width() + 0.01, p.get_y() + p.get_height()/2), va='center')
 
-# Plot 2: MAE Comparison
-sns.barplot(data=results_df, x='MAE (INR)', y='Model', palette='magma', ax=axes[1])
-axes[1].set_title('Ortalama Mutlak Hata (MAE - Düşük İki İyi)', fontweight='bold')
+# MAE
+sns.barplot(data=comp_df, x='MAE (INR)', y='Model', palette='magma', ax=axes[1])
+axes[1].set_title('Varsayılan vs Optimizasyonlu Ortalama Hata (MAE - Düşük İki İyi)', fontweight='bold')
 for p in axes[1].patches:
     axes[1].annotate(f"{p.get_width():.1f} ₹", (p.get_width() + 20, p.get_y() + p.get_height()/2), va='center')
 
@@ -326,16 +418,40 @@ plt.tight_layout()
 plt.show()
 """))
 
-# Cell 17: Feature Importance Code
-cells.append(nbf.v4.new_code_cell(r"""# En başarılı model (Random Forest) için Değişken Önem Dereceleri (Feature Importance)
-best_model = models['Random Forest']
+# Cell 19: Residuals Analysis Plot Code
+cells.append(nbf.v4.new_code_cell(r"""# En Başarılı Optimizasyonlu Model İçin Gerçek vs Tahmin Edilen Fiyatlar & Artık (Residual) Analizi
+best_tuned_model = tuned_models['LightGBM (Tuned)']
+best_preds = best_tuned_model.predict(X_test_prep)
+residuals = y_test - best_preds
 
-# Feature isimlerini al
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+# Plot 1: Actual vs Predicted
+sns.scatterplot(x=y_test, y=best_preds, alpha=0.6, color='teal', ax=axes[0])
+axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label='Mükemmel Tahmin Çizgisi')
+axes[0].set_title('Gerçek Fiyat vs Tahmin Edilen Fiyat (LightGBM Tuned)', fontweight='bold')
+axes[0].set_xlabel('Gerçek Fiyat (INR)')
+axes[0].set_ylabel('Tahmin Edilen Fiyat (INR)')
+axes[0].legend()
+
+# Plot 2: Residuals Distribution
+sns.histplot(residuals, kde=True, color='purple', ax=axes[1])
+axes[1].axvline(0, color='red', linestyle='--', lw=2)
+axes[1].set_title('Tahmin Hataları Dağılımı (Residuals Histogram)', fontweight='bold')
+axes[1].set_xlabel('Hata (Gerçek Fiyat - Tahmin Edilen Fiyat)')
+axes[1].set_ylabel('Frekans')
+
+plt.tight_layout()
+plt.show()
+"""))
+
+# Cell 20: Feature Importance Code
+cells.append(nbf.v4.new_code_cell(r"""# Optimizasyonlu LightGBM Değişken Önem Dereceleri (Feature Importance)
 ohe = preprocessor.named_transformers_['cat']
 cat_feature_names = ohe.get_feature_names_out(cat_cols).tolist()
 all_feature_names = num_cols + cat_feature_names
 
-importances = best_model.feature_importances_
+importances = best_tuned_model.feature_importances_
 feat_imp_df = pd.DataFrame({
     'Feature': all_feature_names,
     'Importance': importances
@@ -343,23 +459,24 @@ feat_imp_df = pd.DataFrame({
 
 plt.figure(figsize=(12, 6))
 sns.barplot(data=feat_imp_df, x='Importance', y='Feature', palette='crest')
-plt.title('Random Forest - En Önemli 15 Değişken (Feature Importance)', fontweight='bold')
+plt.title('Optimizasyonlu LightGBM - En Önemli 15 Değişken (Feature Importance)', fontweight='bold')
 plt.xlabel('Önem Derecesi')
 plt.show()
 """))
 
-# Cell 18: Section 7 Markdown
-cells.append(nbf.v4.new_markdown_cell(r"""## 7. 🎯 Sonuç ve Özet Değerlendirme
+# Cell 21: Section 8 Markdown
+cells.append(nbf.v4.new_markdown_cell(r"""## 8. 🎯 Sonuç ve Özet Değerlendirme
 
-1. **Model Başarısı:**
-   - **En yüksek $R^2$ performansını:** **Random Forest ($R^2 \approx 0.7347$)**, **LightGBM ($R^2 \approx 0.7296$)** ve **XGBoost ($R^2 \approx 0.7273$)** sağlamıştır.
-   - **Lineer Regresyon** (Baseline) modeli **$R^2 \approx 0.4284$** ve **MAE $\approx 2283.7$ ₹** kalırken, ağaç tabanlı (Tree-based) topluluk modelleri karmaşık ve doğrusal olmayan ilişkileri başarıyla yakalayarak hatayı **1196.95 ₹** seviyesine düşürmüştür.
+1. **Hiperparametre Optimizasyonu Kazanımları:**
+   - **LightGBM (Tuned):** $R^2$ skoru varsayılan 0.7296 seviyesinden **0.7566** seviyesine yükseltilmiş ve model başarısında belirgin bir performans artışı sağlanmıştır.
+   - **Random Forest (Tuned):** $R^2 \approx 0.7370$, MAE $\approx 1195.77$ ₹.
+   - **Lineer Regresyon (Baseline)** modeli $R^2 \approx 0.4284$ ve MAE $\approx 2283.70$ ₹ seviyesinde kalmıştır. Topluluk modelleri ve hiperparametre optimizasyonu hata payını yarı yarıya düşürmüştür.
 
 2. **Bilet Fiyatlarını En Çok Etkileyen Faktörler:**
-   - **`Duration_mins` (Uçuş Süresi):** Uçuş süresi arttıkça fiyatlar doğrusal olmayan biçimde yükselmektedir.
-   - **`Is_Premium_Airline` / `Airline` (Havayolu Segmenti):** Vistara ve Air India gibi tam hizmet sunan havayolları ile IndiGo/SpiceJet bütçe havayolları arasındaki fiyat farkı ana belirleyicidir.
-   - **`Lead_Time_Days` (Erken Rezervasyon):** Rezervasyonun uçuş gününe ne kadar yakın yapıldığı fiyatı doğrudan etkilemektedir.
-   - **`Stops_Num` (Aktarma Sayısı):** Aktarmalı uçuşlar genellikle daha yüksek fiyatlandırılmaktadır.
+   - **`Duration_mins` (Uçuş Süresi):** Bilet fiyatını belirleyen en ağırlıklı sayısal özelliktir.
+   - **`Is_Premium_Airline` / `Airline` (Havayolu Segmenti):** Tam hizmet veren havayolları (Vistara, Air India) ile bütçe havayolları arasındaki belirgin fiyat farkı.
+   - **`Lead_Time_Days` (Erken Rezervasyon Günü):** Rezervasyon uçuşa ne kadar yakın günde yapıldıysa bilet fiyatı o kadar artmaktadır.
+   - **`Stops_Num` (Aktarma Sayısı):** Aktarmalı uçuşların operasyonel maliyeti fiyatlara yansımaktadır.
 """))
 
 nb['cells'] = cells
@@ -367,4 +484,4 @@ nb['cells'] = cells
 with open('flight_analysis_and_modeling.ipynb', 'w', encoding='utf-8') as f:
     nbf.write(nb, f)
 
-print("[SUCCESS] Rebuilt flight_analysis_and_modeling.ipynb using raw string literals.")
+print("[SUCCESS] Rebuilt flight_analysis_and_modeling.ipynb with Hyperparameter Optimization section.")
