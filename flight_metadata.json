@@ -1,0 +1,57 @@
+{
+  "airlines": [
+    "Air Asia",
+    "Air India",
+    "GO FIRST",
+    "IndiGo",
+    "SpiceJet",
+    "Vistara"
+  ],
+  "cities": [
+    "Bangalore",
+    "Delhi",
+    "Goa",
+    "Kolkata",
+    "Mumbai"
+  ],
+  "routes": [
+    "Bangalore -> Delhi",
+    "Bangalore -> Kolkata",
+    "Delhi -> Bangalore",
+    "Delhi -> Goa",
+    "Delhi -> Mumbai",
+    "Goa -> Delhi",
+    "Kolkata -> Bangalore",
+    "Mumbai -> Delhi"
+  ],
+  "booking_slots": [
+    "Morning",
+    "Afternoon",
+    "Evening",
+    "Night"
+  ],
+  "cat_cols": [
+    "Airline",
+    "From",
+    "To",
+    "Route",
+    "Booking_Slot",
+    "Dep_TimeOfDay",
+    "Arr_TimeOfDay"
+  ],
+  "num_cols": [
+    "Stops_Num",
+    "Booking_Hour",
+    "Lead_Time_Days",
+    "Duration_mins",
+    "Journey_Day",
+    "Journey_DayOfWeek",
+    "Journey_IsWeekend",
+    "Dep_Hour",
+    "Dep_Minute",
+    "Arr_Hour",
+    "Arr_Minute",
+    "Is_Next_Day",
+    "Is_Premium_Airline"
+  ]
+}

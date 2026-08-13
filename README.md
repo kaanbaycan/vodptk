@@ -1,6 +1,19 @@
-# ✈️ Uçuş Bilet Fiyatı Analizi ve Hiperparametre Optimizasyonlu Makine Öğrenmesi Tahmin Modeli (VODP)
+# ✈️ Uçuş Bilet Fiyatı Tahminleme Web Portalı (VODP)
 
-Bu proje, Hindistan içi iç hat uçuş veri seti (`flight_cleaned.csv`) üzerinde gerçekleştirilen **Keşifçi Veri Analizi (EDA)**, **Özellik Mühendisliği (Feature Engineering)**, **Topluluk Regresyon Modelleri** ve **Hiperparametre Optimizasyonu (RandomizedSearchCV)** çalışmasını içermektedir.
+Bu proje, Hindistan içi iç hat uçuş veri seti (`flight_cleaned.csv`) üzerinde gerçekleştirilen **Keşifçi Veri Analizi (EDA)**, **Özellik Mühendisliği (Feature Engineering)**, **Topluluk Regresyon Modelleri**, **Hiperparametre Optimizasyonu (RandomizedSearchCV)** ve **Streamlit Web Uygulaması** çalışmalarını kapsamaktadır.
+
+---
+
+## 🚀 Streamlit Uygulamasını Yerel Olarak Çalıştırma
+
+Streamlit arayüzünü başlatmak için şu komutu çalıştırın:
+
+```bash
+cd /Users/yakupkaanbaycan/vodp
+streamlit run app.py
+```
+
+Tarayıcınızda otomatik olarak açılan ekranda (`http://localhost:8501`) kalkış şehri, varış şehri, havayolu şirketi, uçuş tarihi ve kalkış saati girerek **anlık fiyat tahmini** alabilirsiniz.
 
 ---
 
@@ -23,35 +36,18 @@ Tüm modeller **%80 Train / %20 Test** ayrımı ve ön işleme pipeline'ı (`Sta
 
 ---
 
-## 🛠️ Hiperparametre Optimizasyon Süreci
-
-3-Fold Cross-Validation ve `RandomizedSearchCV` ile en iyi parametreler:
-- **LightGBM (Tuned):** `n_estimators: 300`, `num_leaves: 50`, `max_depth: 12`, `learning_rate: 0.1` -> **$R^2 = 0.7566$** (Varsayılan 0.7296'dan önemli artış).
-- **Random Forest (Tuned):** `n_estimators: 300`, `min_samples_split: 2`, `min_samples_leaf: 1`, `max_depth: None` -> **$R^2 = 0.7370$**.
-
----
-
-## 🔑 Önemli Çıkarımlar & Bulgular
-
-1. **Hiperparametre Tuning Başarısı:** Optimizasyon sayesinde LightGBM modeli $R^2$ skorunu **%75.7** seviyesine yükselterek en iyi genel model olmuştur.
-2. **Lineer Regresyon vs Topluluk Modelleri:** Lineer regresyon modeli $R^2 = 0.4284$ seviyesinde kalırken, ağaç tabanlı hiperparametre optimizasyonlu modeller hata oranını yarı yarıya düşürmüştür.
-3. **Fiyatı En Çok Etkileyen Değişkenler:**
-   - `Duration_mins` (Uçuş Süresi)
-   - `Is_Premium_Airline` (Vistara / Air India vs IndiGo / SpiceJet / Air Asia)
-   - `Lead_Time_Days` (Erken Rezervasyon Günü)
-   - `Stops_Num` (Aktarma Sayısı)
-
----
-
 ## 📂 Proje Yapısı
 
 ```
 .
-├── flight_analysis_and_modeling.ipynb  # Ana Jupyter Notebook (EDA + Features + ML Models + Hyperparameter Tuning)
+├── app.py                              # Streamlit Web Uygulaması (Canlı Fiyat Tahmin Arayüzü)
+├── flight_model.joblib                 # Eğitilmiş ve dışa aktarılmış LightGBM Model Pipeline'ı
+├── flight_metadata.json                # Arayüz için şehir, havayolu ve meta verileri
+├── train_and_save_model.py             # Modeli eğitip joblib olarak kaydeden betik
+├── flight_analysis_and_modeling.ipynb  # Ana Jupyter Notebook (EDA + Features + ML Models + Tuning + Hata Analizi)
 ├── flight_cleaned.csv                  # Orijinal uçuş verisi
 ├── flight_processed.csv                # Temizlenmiş ve işlenmiş veri seti
-├── build_notebook.py                   # Notebook'u oluşturan otomasyon kodu
+├── build_notebook.py                   # Notebook otomasyon kodu
 ├── eda_analysis.py                     # EDA betiği
-├── eda_summary_charts.png              # EDA özet grafik görseli
 └── README.md                           # Proje dokümantasyonu
 ```
